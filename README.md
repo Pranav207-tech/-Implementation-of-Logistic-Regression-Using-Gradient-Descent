@@ -30,79 +30,124 @@ RegisterNumber: 212224040240
 ```
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
 
-# Load and preprocess the data
-data = pd.read_csv("Placement_Data.csv")
-data1 = data.drop(['sl_no', 'salary'], axis=1)
+# 1. Load the Dataset
+data = pd.read_csv('Placement_Data.csv')
 
-from sklearn.preprocessing import LabelEncoder
-le = LabelEncoder()
-data1["gender"] = le.fit_transform(data1["gender"])
-data1["ssc_b"] = le.fit_transform(data1["ssc_b"])
-data1["hsc_b"] = le.fit_transform(data1["hsc_b"])
-data1["hsc_s"] = le.fit_transform(data1["hsc_s"])
-data1["degree_t"] = le.fit_transform(data1["degree_t"])
-data1["workex"] = le.fit_transform(data1["workex"])
-data1["specialisation"] = le.fit_transform(data1["specialisation"])
-data1["status"] = le.fit_transform(data1["status"])
+print("Original Data:")
+print(data.head())
 
-# Split features and target
-X = data1.iloc[:, :-1].values  # Features
-Y = data1["status"].values  # Target variable
+# 2. Drop Unnecessary Columns
+data = data.drop('sl_no', axis=1)
+data = data.drop('salary', axis=1)
 
-# Feature Scaling
-from sklearn.preprocessing import StandardScaler
-scaler = StandardScaler()
-X = scaler.fit_transform(X)
+print("\nAfter dropping 'sl_no' and 'salary':")
+print(data.head())
 
-# Initialize parameters
-theta = np.random.randn(X.shape[1])  # Random initialization
-alpha = 0.01  # Learning rate
-num_iterations = 1000  # Number of iterations
+# 3. Convert Categorical Columns to 'category' Type
+data["gender"] = data["gender"].astype('category')
+data["ssc_b"] = data["ssc_b"].astype('category')
+data["hsc_b"] = data["hsc_b"].astype('category')
+data["degree_t"] = data["degree_t"].astype('category')
+data["workex"] = data["workex"].astype('category')
+data["specialisation"] = data["specialisation"].astype('category')
+data["status"] = data["status"].astype('category')
+data["hsc_s"] = data["hsc_s"].astype('category')
 
-# Define sigmoid function
+print("\nData types after converting to 'category':")
+print(data.dtypes)
+
+# 4. Convert Categories to Numeric Codes
+data["gender"] = data["gender"].cat.codes
+data["ssc_b"] = data["ssc_b"].cat.codes
+data["hsc_b"] = data["hsc_b"].cat.codes
+data["degree_t"] = data["degree_t"].cat.codes
+data["workex"] = data["workex"].cat.codes
+data["specialisation"] = data["specialisation"].cat.codes
+data["status"] = data["status"].cat.codes
+data["hsc_s"] = data["hsc_s"].cat.codes
+
+print("\nData after converting categories to numeric codes:")
+print(data.head())
+
+# 5. Separate Features (X) and Target (y)
+x = data.iloc[:, :-1].values   # all columns except last
+y = data.iloc[:, -1].values    # last column (status)
+
+print("\nFeature matrix X shape:", x.shape)
+print("Target vector y shape:", y.shape)
+
+# 6. Initialize Parameters
+theta = np.random.randn(x.shape[1])  # Random initial weights for each feature
+
+print("\nInitial theta (weights):")
+print(theta)
+
+# 7. Define Sigmoid Function
 def sigmoid(z):
     return 1 / (1 + np.exp(-z))
 
-# Define loss function
+# 8. Define Loss Function (optional to print/check)
 def loss(theta, X, y):
     h = sigmoid(X.dot(theta))
-    return -np.sum(y * np.log(h + 1e-15) + (1 - y) * np.log(1 - h + 1e-15)) / len(y)
+    return -np.sum(y * np.log(h + 1e-10) + (1 - y) * np.log(1 - h + 1e-10))
+    # Added small 1e-10 to avoid log(0)
 
-# Gradient Descent function
+# 9. Implement Gradient Descent
 def gradient_descent(theta, X, y, alpha, num_iterations):
     m = len(y)
     for i in range(num_iterations):
         h = sigmoid(X.dot(theta))
         gradient = X.T.dot(h - y) / m
         theta -= alpha * gradient
+
+        # Optional: print loss every 100 iterations
+        if (i + 1) % 100 == 0:
+            current_loss = loss(theta, X, y)
+            print(f"Iteration {i+1}, Loss: {current_loss:.4f}")
+
     return theta
 
-# Train the model
-theta = gradient_descent(theta, X, Y, alpha, num_iterations)
+# 10. Train the Model
+theta = gradient_descent(theta, x, y, alpha=0.01, num_iterations=1000)
 
-# Prediction function
+print("\nFinal theta (weights) after training:")
+print(theta)
+
+# 11. Define Prediction Function
 def predict(theta, X):
     h = sigmoid(X.dot(theta))
-    return np.where(h >= 0.5, 1, 0)
+    y_pred = np.where(h >= 0.5, 1, 0)
+    return y_pred
 
-# Model evaluation
-y_pred = predict(theta, X)
-accuracy = np.mean(y_pred == Y)
+# 12. Make Predictions and Compute Accuracy
+y_pred = predict(theta, x)
+accuracy = np.mean(y_pred.flatten() == y)
 
-# Display Results
-print("Accuracy:", accuracy)
-print("\nPredicted:\n", y_pred)
-print("\nActual:\n", Y)
+print("\nTraining Accuracy:", accuracy)
+print("Predicted labels (first 20):")
+print(y_pred[:20])
 
-# Predictions for new data
-xnew = np.array([[0, 87, 0, 95, 0, 2, 78, 2, 0, 0, 1, 0]])  # Example input
-xnew = scaler.transform(xnew)  # Apply same scaling as training data
-y_prednew = predict(theta, xnew)
-print("\nPredicted Result:", y_prednew)
+# 13. Predict for New Students
+# NOTE: The order of features must match 'x' columns exactly.
+# Example new students (values must match the encoded format used above)
+xnew1 = np.array([[0, 87, 0, 95, 0, 2, 78, 2, 0, 0, 1, 0]])
+xnew2 = np.array([[0, 0, 0, 0, 0, 2, 8, 2, 0, 0, 1, 0]])
+
+y_prednew1 = predict(theta, xnew1)
+y_prednew2 = predict(theta, xnew2)
+
+print("\nPrediction for new student 1 (0 = Not Placed, 1 = Placed):", y_prednew1[0])
+print("Prediction for new student 2 (0 = Not Placed, 1 = Placed):", y_prednew2[0])
+
 ```
 ## Output:
-<img width="716" height="387" alt="image" src="https://github.com/user-attachments/assets/bf430a91-6e02-4658-bdc1-692333d1f217" />
+<img width="542" height="416" alt="image" src="https://github.com/user-attachments/assets/9c643f9a-51ee-448b-9dee-a81e47352339" />
+
+
+<img width="532" height="825" alt="image" src="https://github.com/user-attachments/assets/b9ec1f03-aa87-45b7-9b86-89d831ce0355" />
+
 
 
 
